@@ -1,11 +1,6 @@
-FROM node:22-slim AS frontend
-WORKDIR /build
-RUN corepack enable
-COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-COPY frontend/ ./
-RUN pnpm exec vite build
-
+# algotr backend only. The React terminal lives in the algotr-frontend repo
+# and is served by its own nginx image (see the `frontend` service in
+# docker-compose.yml); this image is a pure API and does not build it.
 FROM python:3.13-slim AS runtime
 COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /uvx /bin/
 WORKDIR /app
@@ -17,7 +12,6 @@ COPY trading_node/ trading_node/
 COPY migrations/ migrations/
 COPY alembic.ini ./
 RUN uv sync --frozen --no-dev
-COPY --from=frontend /build/dist frontend/dist
 RUN useradd --create-home --uid 10001 algotr && mkdir -p /data /catalog /events /results \
     && chown -R algotr /app /data /catalog /events /results
 USER algotr

@@ -1,13 +1,17 @@
 # Terminal (React)
 
-The trading terminal is a React and TypeScript single-page app in `frontend/`, served by the API at `http://localhost:8000/ui/` once built. `uv run poe start` builds it and starts the API. It replaced the Streamlit dashboard on 7 November 2026.
+The trading terminal is a React and TypeScript single-page app in the
+separate **algotr-frontend** repo. Its own nginx image serves it at `/ui`
+and proxies `/api` and `/stream` to the API (see the `frontend` service
+in `docker-compose.yml`); the API itself serves no web pages. It replaced
+the Streamlit dashboard on 7 November 2026.
 
-| Command | What it does |
+| Command (in the algotr-frontend repo) | What it does |
 | --- | --- |
-| `uv run poe web-build` | build `frontend/dist`, which the API serves under `/ui` |
-| `uv run poe web` | Vite's dev server on `http://localhost:5173/ui/`, proxying the API on port 8000 |
-| `uv run poe web-check` | Biome, the type check and the Vitest suite (part of `poe check`) |
-| `pnpm --dir frontend types` | regenerate `src/api/schema.d.ts` from the running API's OpenAPI schema |
+| `pnpm build` | type check + Vite build of `dist/`, served under `/ui` by nginx |
+| `pnpm dev` | Vite's dev server on `http://localhost:5173/ui/`, proxying the API on port 8000 |
+| `pnpm check` | Biome, the type check and the Vitest suite |
+| `pnpm types` | regenerate `src/api/schema.d.ts` from the running API's OpenAPI schema |
 
 **Stack.** Blueprint 6 for controls and layout, AG Grid Community for tables (sorting, filters, CSV export), TradingView Lightweight Charts for price and equity, ECharts for the remaining charts, TanStack Query with `openapi-react-query` for data, typed from the API's own schema with `openapi-typescript`, and Biome and Vitest. Packages come from the public npm registry (`frontend/.npmrc`; the user-wide registry is not used) and pnpm refuses any release younger than 14 days (`pnpm-workspace.yaml`). TypeScript stays on 5.9: TypeScript 7 no longer ships the compiler API that `openapi-typescript` uses.
 

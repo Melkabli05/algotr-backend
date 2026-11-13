@@ -2,16 +2,21 @@
 
 Shariah-compliant algorithmic trading platform on Alpaca: long only, cash, no leverage, no derivatives, and automation trades paper accounts only.
 
-> **Split layout.** This repo is the backend only. The React terminal lives in a separate repository, **algotr-frontend**. The backend expects it checked out as `./frontend/` — `uv run poe start` builds it (`pnpm --dir frontend build`) and the API serves it at `/ui`, and the Docker build copies it the same way. To run the full platform locally:
+> **Split layout.** This repo is the backend only (FastAPI API + trading
+> node). The React terminal lives in a separate repository,
+> **algotr-frontend**, with its own nginx image that serves it at `/ui`
+> and proxies `/api` and `/stream` to this API — see `docker-compose.yml`.
+> The API itself serves no web pages. To run the full platform locally:
 >
 > ```bash
-> git clone https://github.com/Melkabli05/algotr-frontend.git frontend
 > cp .env.example .env   # set ALPACA_API_KEY and ALPACA_API_SECRET (paper keys)
-> uv sync
-> uv run poe start       # builds the terminal, then runs the API; open http://localhost:8000/ui/
+> docker compose up -d --build   # API on :8000, terminal on :8080/ui/
 > ```
 >
-> `./frontend/` is gitignored here, so a local checkout is never committed to this repo.
+> Or run the API alone: `uv sync && uv run poe api` (the terminal then
+> needs its own checkout: `git clone
+> https://github.com/Melkabli05/algotr-frontend.git` and `pnpm --dir
+> algotr-frontend dev`, which proxies to the API on :8000).
 
 - **Autopilot.** Daily-bar trend strategies with fixed rules, each judged by five statistical checks. Only what passes them runs, and it is rebalanced once a day ([docs/systematic.md](docs/systematic.md)).
 - **Scanner.** A nightly scan of the liquid US market that ranks what is trending, shows which Shariah-listed stocks the rules would hold and keeps a log of those picks ([docs/scanner.md](docs/scanner.md)).
@@ -25,13 +30,19 @@ Shariah-compliant algorithmic trading platform on Alpaca: long only, cash, no le
 
 ```bash
 cp .env.example .env   # set ALPACA_API_KEY and ALPACA_API_SECRET (paper keys)
-uv sync
-pnpm --dir frontend install
-uv run poe start       # builds the terminal, then runs the API; open http://localhost:8000/ui/
+docker compose up -d --build   # API on :8000, terminal on :8080/ui/
 uv run poe check       # lint, formatting, types, dependencies and tests
 ```
 
-`poe start` ([Poe the Poet](https://poethepoet.natn.io), tasks in `pyproject.toml`) builds the terminal with Vite, then starts the API, which serves it. `STREAM_SYMBOLS` in `.env` picks what the watchlist streams (stocks stream only while the market is open; crypto is 24/7). `DATA_FEED` picks the stock feed: `iex` (the free plan) or `sip` (needs Algo Trader Plus; see [architecture.md](docs/architecture.md#market-data)). FinRL needs its own environment: `uv run poe finrl-setup`.
+`docker compose up` starts Postgres, Redis, the API, the trading node,
+the Celery worker/beat and the terminal. `STREAM_SYMBOLS` in `.env` picks
+what the watchlist streams (stocks stream only while the market is open;
+crypto is 24/7). `DATA_FEED` picks the stock feed: `iex` (the free plan)
+or `sip` (needs Algo Trader Plus; see
+[architecture.md](docs/architecture.md#market-data)). FinRL needs its own
+environment: `uv run poe finrl-setup`. The FinBERT and Kronos model
+weights are fetched in the background on first start (`auto_fetch_models`
+in `.env`; `uv run poe setup` does it up front).
 
 ## Layout
 
@@ -40,7 +51,7 @@ uv run poe check       # lint, formatting, types, dependencies and tests
 | `src/app/core/`, `src/app/quant/` | shared code: settings, Alpaca clients, the audit log; price history, performance metrics, significance tests |
 | `src/app/features/` | `portfolio`, `orders`, `market`, `systematic` and `scanner`, each with its router, logic, schemas and tests |
 | `trading_node/` | the NautilusTrader trading node: the Alpaca adapter, strategies and the plan job |
-| `frontend/` | the React trading terminal, with its tests |
+| `docker-compose.yml` | the whole stack (Postgres, Redis, API, node, worker, beat, terminal) |
 | `finrl_sidecar/` | FinRL, installed and run apart from the project's dependencies |
 | `tests/` | app-level tests; shared fixtures are in `conftest.py` |
 | `docs/` | documentation |

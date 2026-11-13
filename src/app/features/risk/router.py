@@ -14,6 +14,9 @@ from app.features.risk.summary import summarize
 
 router = APIRouter(prefix="/risk", tags=["risk"])
 
+# main.py imports this router under its feature name.
+risk_router = router
+
 
 class WhatIf(BaseModel):
     symbol: str

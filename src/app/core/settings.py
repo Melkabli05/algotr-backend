@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     node_metrics_port: int = 9101
     redis_url: str = "redis://localhost:6379/0"
     eodhd_api_key: str | None = None
-    celery_broker_url: str = "redis://localhost:6379/1"
+    celery_broker_url: str = "redis://redis:6379/1"
     max_price_deviation: float = 0.10
     max_position_share: float = 0.25
     daily_loss_limit: float = 0.03
@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     drift_hold_days: int = 30
     drift_baseline_days: int = 500
     ai_agents: bool = False
+    auto_fetch_models: bool = True
+    cors_origins: list[str] = []
     sec_contact: str | None = None
     smtp_host: str | None = None
     smtp_port: int = 587

@@ -1,0 +1,108 @@
+# algotr stack: Postgres, Redis, the FastAPI backend (api, node, worker,
+# beat, migrate) and the React terminal (frontend, served by nginx on 8080
+# with /api and /stream proxied to the api service).
+#
+# Run it:  cp .env.example .env   (fill in paper Alpaca keys)
+#          docker compose up -d --build
+# Terminal: http://localhost:8080/ui/   API: http://localhost:8000/health
+#
+# The backend image is a pure API (it serves no web pages). The terminal
+# is served by the standalone frontend service, which builds its own
+# image from the algotr-frontend repo (its Dockerfile + nginx config).
+# No local frontend checkout is needed to run this stack.
+#
+# POSTGRES_PASSWORD defaults to "algotr" for local use. On a public host
+# set a strong password in .env — deploy/oracle/docker-compose.yml shows
+# the hardened setup (Caddy login in front, no public 8000/8080).
+
+x-backend: &backend
+  build: .
+  image: algotr-backend
+  env_file: .env
+  restart: unless-stopped
+  environment: &backend-env
+    DATABASE_URL: postgresql+psycopg://algotr:${POSTGRES_PASSWORD:-algotr}@postgres:5432/algotr
+    REDIS_URL: redis://redis:6379/0
+    CELERY_BROKER_URL: redis://redis:6379/1
+  volumes:
+    - data:/app/data
+    - catalog:/catalog
+    - events:/events
+    - results:/results
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+    redis:
+      condition: service_started
+
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: algotr
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-algotr}
+      POSTGRES_DB: algotr
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U algotr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  node:
+    <<: *backend
+    command: ["python", "-m", "trading_node.main"]
+    stop_signal: SIGINT
+    stop_grace_period: 60s
+
+  worker:
+    <<: *backend
+    command: ["celery", "-A", "app.worker", "worker", "--loglevel", "INFO", "--concurrency", "2"]
+
+  beat:
+    <<: *backend
+    command: ["celery", "-A", "app.worker", "beat", "--loglevel", "INFO"]
+
+  frontend:
+    build: https://github.com/Melkabli05/algotr-frontend.git#main
+    image: algotr-frontend
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: api:8000
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  data:
+  catalog:
+  events:
+  results:

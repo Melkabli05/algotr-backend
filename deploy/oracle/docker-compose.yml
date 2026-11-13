@@ -1,0 +1,40 @@
+# Oracle Cloud Always Free override for the stack in docker-compose.yml.
+#
+# Use it as a second compose file, never on its own:
+#   docker compose -f docker-compose.yml \
+#                  -f deploy/oracle/docker-compose.yml up -d --build
+#
+# What it changes for a public VM:
+# - Nothing is published except Caddy on port 80. The api (8000) and
+#   frontend (8080) ports from the base file are removed.
+# - Caddy requires a login (CADDY_USER / CADDY_PASSWORD_HASH in .env) on
+#   every request, because the terminal itself has no login.
+# - Postgres keeps its password from ${POSTGRES_PASSWORD} in .env — set a
+#   strong one; the base file's "algotr" default is for local use only.
+# Needs docker compose v2.24+ for the !override tag.
+
+services:
+  api:
+    ports: !override []
+
+  frontend:
+    ports: !override []
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    environment:
+      CADDY_USER: ${CADDY_USER:?set in .env}
+      CADDY_PASSWORD_HASH: ${CADDY_PASSWORD_HASH:?set in .env, see README}
+
+volumes:
+  caddydata:
+  caddyconfig:

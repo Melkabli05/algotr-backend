@@ -60,17 +60,17 @@ format-check = "ruff format --check ."
 types = "mypy src trading_node tests"
 deps = "deptry ."
 test = "pytest"
-web = "pnpm --dir frontend dev"
-web-build = "pnpm --dir frontend build"
-web-check = "pnpm --dir frontend check"
 
-[tool.poe.tasks.start]
-help = "Build the terminal and start the API; the terminal is at http://localhost:8000/ui/"
-sequence = ["web-build", "api"]
+[tool.poe.tasks.setup]
+help = "After cloning: FinRL's environment, FinBERT and Kronos (about 540 MB; safe to run again)"
+sequence = [
+    { ref = "finbert-setup" },
+    { ref = "kronos-setup" },
+]
 
 [tool.poe.tasks.check]
 help = "Run every check: lint, formatting, types, dependencies and tests"
-sequence = ["lint", "format-check", "types", "deps", "test", "web-check"]
+sequence = ["lint", "format-check", "types", "deps", "test"]
 
 [tool.poe.tasks.ai-evaluate]
 help = "Judge the PPO, SAC and A2C agents and their UCB1 ensemble by the lab gates (about 80 minutes)"

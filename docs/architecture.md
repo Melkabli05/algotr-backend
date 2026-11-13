@@ -14,7 +14,8 @@ src/app/         backend (FastAPI)
     systematic/  daily trend strategies: research, planning, the autopilot job
     scanner/     nightly market scan, ranking, evaluation, a shadow log, news, SEC filings and a crypto table
 trading_node/    NautilusTrader trading node: the Alpaca adapter, strategies and the plan job
-frontend/        React trading terminal, served at /ui
+                 (the React terminal lives in the algotr-frontend repo now,
+                  served at /ui by its own nginx image)
 finrl_sidecar/   FinRL, FinBERT and SHAP in their own environment
 tests/           app-level tests: the launcher and the application lifecycle
 docs/            this documentation

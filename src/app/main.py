@@ -7,6 +7,7 @@ from datetime import UTC, date, datetime
 import redis
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app import watch
@@ -23,6 +24,7 @@ from app.core.database import transaction
 from app.core.errors import install_error_handlers
 from app.core.feature_store import FeatureStore
 from app.core.limits import LimitStore
+from app.core.models import ensure as ensure_models
 from app.core.settings import get_settings
 from app.features.admin.router import router as admin_router
 from app.features.alerts.node_events import NodeEventAlerts
@@ -59,15 +61,17 @@ from app.features.orders.iceberg import IcebergDesk
 from app.features.orders.router import router as orders_router
 from app.features.portfolio.router import router as portfolio_router
 from app.features.risk.history import RiskRecorder
-from app.features.risk.router import router as risk_router
+from app.features.risk.router import risk_router
 from app.features.risk.sectors import SectorMap
 from app.features.scanner.crypto import CryptoDesk
 from app.features.scanner.filings import Edgar, FilingStore
 from app.features.scanner.news import NewsFeed, NewsStore
 from app.features.scanner.router import router as scanner_router
+from app.features.scanner.sentiment import MODEL_DIR as FINBERT_DIR
 from app.features.scanner.sentiment import Scorer
 from app.features.scanner.service import ROOT, Scanner
 from app.features.strategies.router import router as strategies_router
+from app.features.systematic.agent_lab import KRONOS_DIR
 from app.features.systematic.agents import AgentDesk
 from app.features.systematic.automation import Automation
 from app.features.systematic.catalog import STRATEGIES, open_registry
@@ -84,7 +88,6 @@ from app.health import router as health_router
 from app.quant import history
 from app.system_health import Probe, Timing, time_requests
 from app.system_health import router as system_health_router
-from app.ui import router as ui_router
 
 
 def alert_on_update(app: FastAPI, event: StreamEvent) -> None:
@@ -309,7 +312,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         else None,
     )
     app.state.data_quality.start()
+    fetching = (
+        asyncio.create_task(ensure_models({"finbert": FINBERT_DIR, "kronos": KRONOS_DIR}))
+        if settings_now.auto_fetch_models
+        else None
+    )
     yield
+    if fetching is not None:
+        await stop_watching(fetching)
     await stop_watching(watching)
     await app.state.node_feed.stop()
     app.state.data_quality.stop()
@@ -340,6 +350,14 @@ app.state.timing = Timing()
 app.state.probe = Probe()
 app.middleware("http")(time_requests)
 
+if get_settings().cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=get_settings().cors_origins,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 install_error_handlers(app)
 app.exception_handler(RequestValidationError)(trail.refused_before_routing)
 for router in (
@@ -365,7 +383,6 @@ for router in (
     risk_router,
     health_router,
     activity_router,
-    ui_router,
 ):
     app.include_router(router)
 

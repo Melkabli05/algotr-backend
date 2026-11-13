@@ -1,0 +1,10 @@
+# Caddy in front of the algotr terminal. Serves on plain HTTP port 80 (no
+# domain, so no automatic HTTPS) and requires basic auth on every request,
+# because the terminal/API has no login of its own. The frontend container
+# proxies /api and /stream to the api service itself.
+:80 {
+	basic_auth /* {
+		{$CADDY_USER} {$CADDY_PASSWORD_HASH}
+	}
+	reverse_proxy frontend:80
+}

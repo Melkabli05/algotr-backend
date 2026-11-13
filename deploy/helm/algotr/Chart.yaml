@@ -1,0 +1,6 @@
+apiVersion: v2
+name: algotr
+description: The algotr platform on Kubernetes - a singleton NautilusTrader live node, the API, Celery, and backtest and research jobs.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

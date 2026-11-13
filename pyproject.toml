@@ -1,0 +1,164 @@
+[project]
+name = "algotr"
+version = "0.1.0"
+description = "Shariah-compliant algorithmic trading platform"
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.1",
+    "alpaca-py>=0.44.0",
+    "anyio>=4.14.2",
+    "apscheduler>=3.11,<4",
+    "arch>=8.0.0",
+    "cachetools>=7.2.6",
+    "celery>=5.7.0",
+    "empyrical-reloaded>=0.7.1",
+    "eodhd>=1.0.32",
+    "exchange-calendars>=4.13.2",
+    "fastapi[standard]>=0.141.1",
+    "httpx>=0.28.1",
+    "nautilus-trader==2.0.0rc7",
+    "numpy>=2.5.2",
+    "pagerduty>=7.2.0",
+    "pandas>=3.0.5",
+    "prometheus-client>=0.26.0",
+    "prometheus-fastapi-instrumentator>=8.1.0",
+    "psycopg[binary]>=3.2",
+    "pyarrow>=25.0.1",
+    "pydantic>=2.13.4",
+    "pydantic-core>=2.46.4",
+    "pydantic-settings>=2.15.0",
+    "redis>=8.1.0",
+    "requests>=2.34.2",
+    "river>=0.26.1",
+    "scipy>=1.18.1",
+    "sqlalchemy>=2.0",
+    "statsmodels>=0.15.0",
+    "truststore>=0.10.5",
+    "urllib3>=2.7.0",
+    "websockets>=16.1.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.12.3,<0.13.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "app"
+module-root = "src"
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
+[tool.poe.tasks]
+api = "uvicorn app.main:app --port 8000"
+node = "python -m trading_node.main"
+migrate = "alembic upgrade head"
+worker = "celery -A app.worker worker --loglevel INFO"
+beat = "celery -A app.worker beat --loglevel INFO"
+lint = "ruff check ."
+format-check = "ruff format --check ."
+types = "mypy src trading_node tests"
+deps = "deptry ."
+test = "pytest"
+web = "pnpm --dir frontend dev"
+web-build = "pnpm --dir frontend build"
+web-check = "pnpm --dir frontend check"
+
+[tool.poe.tasks.start]
+help = "Build the terminal and start the API; the terminal is at http://localhost:8000/ui/"
+sequence = ["web-build", "api"]
+
+[tool.poe.tasks.check]
+help = "Run every check: lint, formatting, types, dependencies and tests"
+sequence = ["lint", "format-check", "types", "deps", "test", "web-check"]
+
+[tool.poe.tasks.ai-evaluate]
+help = "Judge the PPO, SAC and A2C agents and their UCB1 ensemble by the lab gates (about 80 minutes)"
+cmd = "python -m app.jobs ai-evaluate"
+
+[tool.poe.tasks.news-backfill]
+help = "Fetch the Shariah-listed stocks' headlines back to May 2020 and score them (resumable; an hour or more)"
+cmd = "python -m app.jobs news-backfill"
+
+[tool.poe.tasks.finbert-setup]
+help = "Set up the sidecar and fetch FinBERT, which scores the news (438 MB, CC BY-NC-SA 4.0: non-commercial use)"
+sequence = [
+    { ref = "finrl-setup" },
+    { cmd = "finrl_sidecar/.venv/bin/python finrl_sidecar/fetch_finbert.py data/models/finbert" },
+]
+
+[tool.poe.tasks.kronos-setup]
+help = "Set up the sidecar and fetch Kronos (MIT; the small model is 99 MB)"
+sequence = [
+    { ref = "finrl-setup" },
+    { cmd = "finrl_sidecar/.venv/bin/python finrl_sidecar/fetch_kronos.py data/models/kronos" },
+]
+
+[tool.poe.tasks.finrl-setup]
+help = "Install FinRL into its own environment (safe to run again)"
+default_item_type = "cmd"
+sequence = [
+    "uv venv --python 3.13 --allow-existing finrl_sidecar/.venv",
+    "uv pip install --python finrl_sidecar/.venv/bin/python -r finrl_sidecar/requirements.txt",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "T20", "S"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"conftest.py" = ["S106"]
+"trading_node/run_*.py" = ["T201"]
+"**/tests/**" = ["S106"]
+"migrations/versions/*" = ["E501"]
+
+[tool.mypy]
+exclude = ["finrl_sidecar/"]
+python_version = "3.13"
+mypy_path = "src"
+plugins = ["pydantic.mypy"]
+strict = true
+ignore_missing_imports = true
+disable_error_code = ["prop-decorator"]
+
+[[tool.mypy.overrides]]
+module = [
+    "test_app",
+    "trading_node.alpaca_adapter.tests.support",
+    "app.features.drift.monitor",
+]
+disallow_untyped_calls = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests", "src/app", "trading_node"]
+
+[tool.deptry]
+known_first_party = ["app", "trading_node"]
+extend_exclude = ["finrl_sidecar"]
+
+[tool.deptry.per_rule_ignores]
+DEP002 = ["pyarrow", "websockets"]
+DEP004 = ["pytest", "fakeredis", "time_machine"]
+
+[tool.coverage.run]
+source = ["src/app", "trading_node"]
+omit = ["*/tests/*", "conftest.py"]
+
+[dependency-groups]
+dev = [
+    "deptry>=0.25.1",
+    "fakeredis>=2.40.0",
+    "mypy>=2.3.1",
+    "pip-audit>=2.10.1",
+    "poethepoet>=0.49.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.4",
+    "time-machine>=3.6.0",
+    "types-cachetools>=7.0.0.20260713",
+]

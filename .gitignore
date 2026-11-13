@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+finrl_sidecar/.venv/
+build/
+dist/
+
+# JavaScript
+node_modules
+.pnpm-store/
+
+# Tool caches and reports
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Split layout: the React terminal lives in the algotr-frontend repo.
+# Clone it here when running the full platform locally; it is never committed.
+frontend/
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+
+# Runtime state: account data, models, audit log, logs
+data/
+logs/
+*.log
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

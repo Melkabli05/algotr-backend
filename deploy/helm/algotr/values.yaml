@@ -1,0 +1,77 @@
+image:
+  repository: algotr
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+live:
+  # validate imports the runtime and reports what the factory would run, but never connects to a
+  # venue or trades. Trading requires mode: live and a factory: a deliberate change, never a default.
+  mode: validate
+  factory: ""
+  tradingMode: paper
+  metricsPort: 9101
+  resources:
+    requests: {cpu: 500m, memory: 1Gi}
+    limits: {memory: 2Gi}
+  podDisruptionBudget:
+    enabled: false
+
+api:
+  replicas: 1
+  port: 8000
+  resources:
+    requests: {cpu: 250m, memory: 1Gi}
+    limits: {memory: 3Gi}
+
+worker:
+  enabled: true
+  concurrency: 2
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+
+beat:
+  enabled: true
+
+backtest:
+  job:
+    enabled: false
+    strategy: halal-etf-trend
+  research:
+    enabled: true
+    schedule: "30 22 * * 1-5"
+
+persistence:
+  storageClass: ""
+  catalog: {size: 20Gi}
+  events: {size: 5Gi}
+  results: {size: 5Gi}
+  data: {size: 10Gi}
+
+config:
+  databaseUrl: ""
+  redisUrl: redis://redis:6379/0
+  celeryBrokerUrl: redis://redis:6379/1
+  alpacaPaper: "true"
+
+secrets:
+  # Alpaca credentials and the rest come from an ExternalSecret, never from this file.
+  externalSecret:
+    enabled: true
+    refreshInterval: 1h
+    secretStoreRef:
+      name: vault
+      kind: ClusterSecretStore
+    keys:
+      ALPACA_API_KEY: algotr/alpaca#api_key
+      ALPACA_API_SECRET: algotr/alpaca#api_secret
+      DATABASE_URL: algotr/postgres#url
+      PAGERDUTY_ROUTING_KEY: algotr/pagerduty#routing_key
+      EODHD_API_KEY: algotr/eodhd#api_key
+  existingSecret: ""
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRule:
+    enabled: true

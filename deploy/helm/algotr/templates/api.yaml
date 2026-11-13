@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: api}
+  template:
+    metadata:
+      labels: {{- include "algotr.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      initContainers:
+        - name: migrate
+          image: {{ include "algotr.image" . }}
+          command: ["alembic", "upgrade", "head"]
+          env: {{- include "algotr.env" . | nindent 12 }}
+          envFrom:
+            - secretRef: {name: {{ include "algotr.secret" . }}}
+      containers:
+        - name: api
+          image: {{ include "algotr.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "{{ .Values.api.port }}"]
+          env: {{- include "algotr.env" . | nindent 12 }}
+          envFrom:
+            - secretRef: {name: {{ include "algotr.secret" . }}}
+          ports:
+            - {name: http, containerPort: {{ .Values.api.port }}}
+          readinessProbe:
+            httpGet: {path: /health, port: http}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          volumeMounts: {{- include "algotr.mounts" . | nindent 12 }}
+          resources: {{- toYaml .Values.api.resources | nindent 12 }}
+      volumes: {{- include "algotr.volumes" . | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-api
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  selector: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: api}
+  ports:
+    - {name: http, port: {{ .Values.api.port }}, targetPort: http}

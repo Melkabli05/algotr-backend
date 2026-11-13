@@ -1,0 +1,54 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-worker
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: worker}
+  template:
+    metadata:
+      labels: {{- include "algotr.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      containers:
+        - name: worker
+          image: {{ include "algotr.image" . }}
+          command: ["celery", "-A", "app.worker", "worker", "--loglevel", "INFO", "--concurrency", "{{ .Values.worker.concurrency }}"]
+          env: {{- include "algotr.env" . | nindent 12 }}
+          envFrom:
+            - secretRef: {name: {{ include "algotr.secret" . }}}
+          volumeMounts: {{- include "algotr.mounts" . | nindent 12 }}
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+      volumes: {{- include "algotr.volumes" . | nindent 8 }}
+{{- end }}
+{{- if .Values.beat.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-beat
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: beat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: beat}
+  template:
+    metadata:
+      labels: {{- include "algotr.labels" . | nindent 8 }}
+        app.kubernetes.io/component: beat
+    spec:
+      containers:
+        - name: beat
+          image: {{ include "algotr.image" . }}
+          command: ["celery", "-A", "app.worker", "beat", "--loglevel", "INFO", "--schedule", "/tmp/celerybeat-schedule"]
+          env: {{- include "algotr.env" . | nindent 12 }}
+          envFrom:
+            - secretRef: {name: {{ include "algotr.secret" . }}}
+{{- end }}

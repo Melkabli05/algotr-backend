@@ -1,0 +1,18 @@
+{{- range $name := list "catalog" "events" "results" "data" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $.Release.Name }}-{{ $name }}
+  labels: {{- include "algotr.labels" $ | nindent 4 }}
+  annotations:
+    helm.sh/resource-policy: keep
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if $.Values.persistence.storageClass }}
+  storageClassName: {{ $.Values.persistence.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ (index $.Values.persistence $name).size }}
+{{- end }}

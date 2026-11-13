@@ -1,0 +1,67 @@
+{{- if and (eq .Values.live.mode "live") (not .Values.live.factory) }}
+{{- fail "live.mode=live needs live.factory, the module:callable that builds the node (for example trading_node.factory:build)" }}
+{{- end }}
+{{- if not (has .Values.live.mode (list "validate" "live")) }}
+{{- fail "live.mode is validate or live" }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-live-node
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: live-node
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: live-node}
+  template:
+    metadata:
+      labels: {{- include "algotr.labels" . | nindent 8 }}
+        app.kubernetes.io/component: live-node
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: live-node
+          image: {{ include "algotr.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["python", "-m", "trading_node.main"]
+          env:
+            {{- include "algotr.env" . | nindent 12 }}
+            - name: NODE_MODE
+              value: {{ .Values.live.mode | quote }}
+            - name: NODE_FACTORY
+              value: {{ default "trading_node.factory:build" .Values.live.factory | quote }}
+            - name: NODE_METRICS_PORT
+              value: {{ .Values.live.metricsPort | quote }}
+          envFrom:
+            - secretRef: {name: {{ include "algotr.secret" . }}}
+          ports:
+            - {name: metrics, containerPort: {{ .Values.live.metricsPort }}}
+          volumeMounts: {{- include "algotr.mounts" . | nindent 12 }}
+          resources: {{- toYaml .Values.live.resources | nindent 12 }}
+      volumes: {{- include "algotr.volumes" . | nindent 8 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-live-node
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: live-node
+spec:
+  selector: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: live-node}
+  ports:
+    - {name: metrics, port: {{ .Values.live.metricsPort }}, targetPort: metrics}
+{{- if .Values.live.podDisruptionBudget.enabled }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-live-node
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+spec:
+  maxUnavailable: 0
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}, app.kubernetes.io/component: live-node}
+{{- end }}

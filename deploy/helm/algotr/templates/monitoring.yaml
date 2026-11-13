@@ -1,0 +1,56 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/instance: {{ .Release.Name }}}
+  endpoints:
+    - {port: http, path: /metrics, interval: {{ .Values.monitoring.serviceMonitor.interval }}}
+    - {port: metrics, path: /metrics, interval: {{ .Values.monitoring.serviceMonitor.interval }}}
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: algotr
+      rules:
+        - alert: AlgotrSystemBreakerOpen
+          expr: algotr_breaker_state{level="system"} == 2
+          labels: {severity: critical}
+          annotations: {summary: "System breaker open: trading halted and positions closing"}
+        - alert: AlgotrBreakerOpen
+          expr: algotr_breaker_state{level=~"strategy|portfolio"} == 2
+          labels: {severity: warning}
+          annotations: {summary: "{{`{{ $labels.name }}`}} breaker open"}
+        - alert: AlgotrKillSwitchEngaged
+          expr: algotr_kill_switch_engaged == 1
+          labels: {severity: critical}
+          annotations: {summary: "{{`{{ $labels.name }}`}} kill switch engaged"}
+        - alert: AlgotrNodeHeartbeatStale
+          expr: time() - algotr_node_heartbeat_seconds > 120
+          for: 1m
+          labels: {severity: critical}
+          annotations: {summary: "The trading node has missed its heartbeat for two minutes"}
+        - alert: AlgotrOrderRejections
+          expr: increase(algotr_order_rejections_total[10m]) >= 3
+          labels: {severity: critical}
+          annotations: {summary: "Three or more orders refused in ten minutes"}
+        - alert: AlgotrStrategySharpeDecay
+          expr: algotr_strategy_sharpe{window="30d"} < -0.5
+          for: 1h
+          labels: {severity: warning}
+          annotations: {summary: "{{`{{ $labels.strategy }}`}} 30-day Sharpe below -0.5"}
+        - alert: AlgotrApiSlow
+          expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 2
+          for: 10m
+          labels: {severity: warning}
+          annotations: {summary: "API p95 latency above two seconds"}
+{{- end }}

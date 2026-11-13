@@ -1,0 +1,50 @@
+{{- define "algotr.jobPod" -}}
+restartPolicy: Never
+containers:
+  - name: {{ .name }}
+    image: {{ include "algotr.image" .root }}
+    command: {{ toJson .command }}
+    env: {{- include "algotr.env" .root | nindent 6 }}
+    envFrom:
+      - secretRef: {name: {{ include "algotr.secret" .root }}}
+    volumeMounts: {{- include "algotr.mounts" .root | nindent 6 }}
+volumes: {{- include "algotr.volumes" .root | nindent 2 }}
+{{- end -}}
+{{- if .Values.backtest.job.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-backtest-{{ .Values.backtest.job.strategy }}-{{ .Release.Revision }}
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backtest
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels: {{- include "algotr.labels" . | nindent 8 }}
+        app.kubernetes.io/component: backtest
+    spec: {{- include "algotr.jobPod" (dict "root" . "name" "backtest" "command" (list "python" "-m" "app.jobs" "backtest" .Values.backtest.job.strategy)) | nindent 6 }}
+{{- end }}
+{{- if .Values.backtest.research.enabled }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-research
+  labels: {{- include "algotr.labels" . | nindent 4 }}
+    app.kubernetes.io/component: research
+spec:
+  schedule: {{ .Values.backtest.research.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels: {{- include "algotr.labels" . | nindent 12 }}
+            app.kubernetes.io/component: research
+        spec: {{- include "algotr.jobPod" (dict "root" . "name" "research" "command" (list "python" "-m" "app.jobs" "lifecycle")) | nindent 10 }}
+{{- end }}

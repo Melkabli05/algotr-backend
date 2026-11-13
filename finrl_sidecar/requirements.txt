@@ -1,0 +1,16 @@
+# FinRL runs here, in its own environment, because its pins (alpaca-py<0.38, websockets==10.4)
+# conflict with this project's. Pinned to an exact commit so a moving master cannot change results.
+finrl @ git+https://github.com/AI4Finance-Foundation/FinRL.git@7e98df461cbc7772f16a545a2f13b521e5d0b8f4
+# Needed by FinRL modules that its own metadata does not declare.
+gym
+dm-tree
+torch_geometric
+optuna
+quantstats
+# FinBERT scores the scanner's headlines in this environment; fetch_finbert.py gets its weights.
+transformers==5.22.1
+huggingface_hub==2.4.0
+# SHAP explains the agents' weights in this environment; the exact explainer needs nothing else.
+shap==0.54.1
+# Kronos, the candlestick foundation model, needs einops; fetch_kronos.py gets its code and weights.
+einops==0.8.1

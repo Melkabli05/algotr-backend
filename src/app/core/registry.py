@@ -48,14 +48,23 @@ class RegisteredModel(BaseModel):
         return bool(self.gates) and all(gate.get("passed") for gate in self.gates)
 
 
+def hidden(relative: Path) -> bool:
+    return any(part.startswith(".") for part in relative.parts)
+
+
 def artifact_hash(path: str) -> str | None:
-    """SHA-256 of a model's weights: of the file, or of every file of a folder in order."""
+    """SHA-256 of a model's weights: of the file, or of every file of a folder in order.
+
+    Hidden folders are left out: Hugging Face writes download timestamps into `.cache`, which would
+    give the same weights a new hash on every fresh download.
+    """
     found = Path(path)
     if found.is_file():
         return hashlib.sha256(found.read_bytes()).hexdigest()
     if found.is_dir():
         digest = hashlib.sha256()
-        for item in sorted(p for p in found.rglob("*") if p.is_file()):
+        files = (p for p in found.rglob("*") if p.is_file() and not hidden(p.relative_to(found)))
+        for item in sorted(files):
             digest.update(str(item.relative_to(found)).encode())
             digest.update(hashlib.sha256(item.read_bytes()).digest())
         return digest.hexdigest()

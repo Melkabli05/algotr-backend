@@ -73,6 +73,27 @@ def test_a_version_names_one_artifact_for_good(database: Engine, tmp_path: Path)
             )
 
 
+def test_the_hash_of_a_weights_folder_ignores_the_download_cache(tmp_path: Path) -> None:
+    def folder(name: str, stamp: str) -> str:
+        root = tmp_path / name
+        (root / ".cache" / "huggingface" / "download").mkdir(parents=True)
+        (root / "model.safetensors").write_bytes(b"weights")
+        (root / ".cache" / "huggingface" / "download" / "model.metadata").write_text(stamp)
+        return str(root)
+
+    assert registry.artifact_hash(folder("first", "1699")) == registry.artifact_hash(
+        folder("second", "1700")
+    )
+
+
+def test_the_hash_of_a_weights_folder_changes_with_the_weights(tmp_path: Path) -> None:
+    (tmp_path / "model.safetensors").write_bytes(b"weights")
+    before = registry.artifact_hash(str(tmp_path))
+    (tmp_path / "model.safetensors").write_bytes(b"other weights")
+
+    assert registry.artifact_hash(str(tmp_path)) != before
+
+
 def test_a_candidate_that_failed_a_gate_cannot_be_promoted(
     database: Engine, tmp_path: Path
 ) -> None:

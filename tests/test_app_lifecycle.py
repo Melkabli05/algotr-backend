@@ -22,6 +22,8 @@ from app.features.systematic.agents import AgentDesk
 from app.features.systematic.automation import Automation
 from app.features.systematic.navlog import NavLog
 
+fetched: list[list[str]] = []
+
 
 class FakeStreams:
     instances: list["FakeStreams"] = []
@@ -126,6 +128,14 @@ def lifecycle(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[FakeS
         lambda *args, **kwargs: NavLog(*args, **{**kwargs, "path": tmp_path / "nav.jsonl"}),
     )
     monkeypatch.setattr(Scanner, "_missed_today", lambda self: False)
+    fetched.clear()
+
+    async def fake_ensure(folders: dict[str, Path]) -> None:
+        fetched.append(sorted(folders))
+
+    monkeypatch.setattr(main, "ensure_models", fake_ensure)
+    monkeypatch.setenv("AUTO_FETCH_MODELS", "true")
+    get_settings.cache_clear()
     yield FakeStreams.instances  # type: ignore[misc]
 
 
@@ -294,3 +304,19 @@ def test_the_explanations_of_an_agent_are_served_from_the_audit_log(lifecycle: A
         assert body["decisions"][0]["trained"] == "2026-11-01"
         assert body["decisions"][0]["values"] == {"ret_1": {"HLAL": 0.1, "SPUS": 0.0, "cash": -0.1}}
         assert client.get("/systematic/agents/sac/explanations").json()["decisions"] == []
+
+
+def test_the_missing_models_are_fetched_when_the_app_starts(lifecycle: Any) -> None:
+    with TestClient(main.app):
+        pass
+    assert fetched == [["finbert", "kronos"]]
+
+
+def test_no_model_is_fetched_when_the_setting_is_off(
+    lifecycle: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("AUTO_FETCH_MODELS", "false")
+    get_settings.cache_clear()
+    with TestClient(main.app):
+        pass
+    assert fetched == []

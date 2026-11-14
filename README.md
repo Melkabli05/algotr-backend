@@ -20,7 +20,7 @@ Shariah-compliant algorithmic trading platform on Alpaca: long only, cash, no le
 
 - **Autopilot.** Daily-bar trend strategies with fixed rules, each judged by five statistical checks. Only what passes them runs, and it is rebalanced once a day ([docs/systematic.md](docs/systematic.md)).
 - **Scanner.** A nightly scan of the liquid US market that ranks what is trending, shows which Shariah-listed stocks the rules would hold and keeps a log of those picks ([docs/scanner.md](docs/scanner.md)).
-- **Terminal.** A React trading terminal served by the API at `/ui`: markets, positions, orders, the coin order book, strategies, signals with their explanations, backtests, research, risk, compliance, the audit log and settings ([docs/terminal.md](docs/terminal.md)).
+- **Terminal.** A React trading terminal, in the [algotr-frontend](https://github.com/Melkabli05/algotr-frontend) repository and served by its own nginx image at `/ui`: markets, positions, orders, the coin order book, strategies, signals with their explanations, backtests, research, risk, compliance, the audit log and settings ([docs/terminal.md](docs/terminal.md)).
 - **Trading engine.** [NautilusTrader](https://nautilustrader.io/) places the orders through a pure-Python Alpaca adapter ([docs/trading-engine.md](docs/trading-engine.md)).
 - **Compliance and risk.** Shariah screening before every buy and on what is held, position, daily-loss, liquidity, spread and order-flow limits, and a five-step kill switch ([docs/compliance.md](docs/compliance.md)).
 - **Purification.** Dividends and interest per year with what each owes to charity, and a zakat estimate ([docs/ledger.md](docs/ledger.md#purification-and-zakat)).
@@ -64,6 +64,7 @@ in `.env`; `uv run poe setup` does it up front).
 | [docs/architecture.md](docs/architecture.md) | layout, dependency rules, background jobs, data on disk, checks |
 | [docs/systematic.md](docs/systematic.md) | strategies, the five checks, the rule lab, FinRL, the audit log, autopilot |
 | [docs/scanner.md](docs/scanner.md) | the scanner as built; [plan](docs/scanner-plan.md) and [research](docs/scanner-research.md) behind it |
+| [docs/deployment.md](docs/deployment.md) | Docker Compose, Helm, the terminal's address, CORS and the models |
 | [docs/terminal.md](docs/terminal.md) | the React trading terminal at `/ui`: stack, shell, views, commands |
 | [docs/trading-engine.md](docs/trading-engine.md) | how orders are placed through Nautilus |
 | [docs/quant-research.md](docs/quant-research.md) | the research behind the strategies |

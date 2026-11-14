@@ -16,6 +16,24 @@ live:
   podDisruptionBudget:
     enabled: false
 
+frontend:
+  enabled: true
+  image:
+    repository: algotr-frontend
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {memory: 128Mi}
+
+ingress:
+  enabled: false
+  className: ""
+  host: algotr.example.com
+  tlsSecret: ""
+  annotations: {}
+
 api:
   replicas: 1
   port: 8000
@@ -52,6 +70,7 @@ config:
   redisUrl: redis://redis:6379/0
   celeryBrokerUrl: redis://redis:6379/1
   alpacaPaper: "true"
+  autoFetchModels: "true"
 
 secrets:
   # Alpaca credentials and the rest come from an ExternalSecret, never from this file.

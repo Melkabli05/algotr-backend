@@ -649,7 +649,7 @@ def test_the_ensemble_is_eligible_only_when_the_latest_evaluation_says_so(
     assert desk.ensemble_eligible() is False
 
     def judged(eligible: bool) -> object:
-        group = NS(name="UCB1 ensemble", verdict=NS(eligible=eligible))
+        group = NS(name="Regime ensemble", verdict=NS(eligible=eligible))
         return NS(groups=[NS(name="PPO agent", verdict=NS(eligible=True)), group])
 
     monkeypatch.setattr(agent_lab, "latest", lambda log: judged(True))

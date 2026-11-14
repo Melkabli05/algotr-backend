@@ -62,4 +62,4 @@ Three reinforcement learning agents (PPO, SAC, A2C) that choose portfolio weight
 | `features/drift/` | `DriftMonitor`, the scan, the router and models |
 | `core/drift.py` | the `ReturnSource` and `SizingGuard` protocols that connect them (`main.py` wires them) |
 | `features/systematic/explanations.py` | the SHAP explanations of each decision as audit entries, and reading them back ([xai.md](xai.md)) |
-| `frontend/src/views/Research.tsx`, `Signals.tsx` | the agents and their judgement (Research), the drift banner and decisions (Signals and XAI) |
+| algotr-frontend: `src/views/Research.tsx`, `Signals.tsx` | the agents and their judgement (Research), the drift banner and decisions (Signals and XAI) |

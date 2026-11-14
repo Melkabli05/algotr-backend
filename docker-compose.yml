@@ -16,7 +16,10 @@
 # the hardened setup (Caddy login in front, no public 8000/8080).
 
 x-backend: &backend
-  build: .
+  build:
+    context: .
+    args:
+      TORCH_INDEX: ${TORCH_INDEX:-https://download.pytorch.org/whl/cpu}
   image: algotr-backend
   env_file: .env
   restart: unless-stopped

@@ -51,7 +51,7 @@ They explain the network: why this model, given this observation and measured ag
 | `finrl_sidecar/tests/` | unit tests against a brute-force enumeration; `selftest` runs them (`tests/test_ai_sidecar.py`) |
 | `features/systematic/agents.py` | the queue, the explain step and the audit write |
 | `features/systematic/explanations.py` | the record's shape and reading it back |
-| `frontend/src/views/Signals.tsx`, `xai.ts` | the waterfall, the feature table and the narrative |
+| algotr-frontend: `src/views/Signals.tsx`, `xai.ts` | the waterfall, the feature table and the narrative |
 
 ## First live run
 

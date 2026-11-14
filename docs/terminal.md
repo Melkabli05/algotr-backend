@@ -2,7 +2,7 @@
 
 The trading terminal is a React and TypeScript single-page app in the
 separate **algotr-frontend** repo. Its own nginx image serves it at `/ui`
-and proxies `/api` and `/stream` to the API (see the `frontend` service
+and proxies every other path, and `/stream`, to the API (see the `frontend` service
 in `docker-compose.yml`); the API itself serves no web pages. It replaced
 the Streamlit dashboard on 7 November 2026.
 

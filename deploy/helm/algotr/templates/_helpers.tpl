@@ -19,6 +19,8 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
   value: {{ .Values.config.redisUrl | quote }}
 - name: CELERY_BROKER_URL
   value: {{ .Values.config.celeryBrokerUrl | quote }}
+- name: AUTO_FETCH_MODELS
+  value: {{ .Values.config.autoFetchModels | quote }}
 - name: ALPACA_PAPER
   value: {{ .Values.config.alpacaPaper | quote }}
 - name: ALPACA_TRADING_MODE

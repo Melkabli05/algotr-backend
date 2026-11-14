@@ -7,7 +7,6 @@ from datetime import UTC, date, datetime
 import redis
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app import watch
@@ -20,6 +19,7 @@ from app.core.broker import (
     get_stock_data_client,
     get_trading_client,
 )
+from app.core.cors import allow_origins
 from app.core.database import transaction
 from app.core.errors import install_error_handlers
 from app.core.feature_store import FeatureStore
@@ -350,13 +350,7 @@ app.state.timing = Timing()
 app.state.probe = Probe()
 app.middleware("http")(time_requests)
 
-if get_settings().cors_origins:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=get_settings().cors_origins,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+allow_origins(app, get_settings().cors_origins)
 
 install_error_handlers(app)
 app.exception_handler(RequestValidationError)(trail.refused_before_routing)
